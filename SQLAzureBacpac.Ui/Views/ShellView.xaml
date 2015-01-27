@@ -38,8 +38,20 @@
             </DockPanel>
 
             <!-- storagekey -->
-            <Label DockPanel.Dock="Top" Content="Storagekey name:" />
-            <TextBox DockPanel.Dock="Top" Text="{Binding SqlAzureCredentials.StorageKey}" />
+            <Grid DockPanel.Dock="Top">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width=".60*"></ColumnDefinition>
+                    <ColumnDefinition Width=".40*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <Label Content="Storagekey:" />
+                    <TextBox Text="{Binding SqlAzureCredentials.StorageKey}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                    <Label Content="Storage account:" />
+                    <TextBox Text="{Binding StorageAccount}" />
+                </StackPanel>
+            </Grid>
 
             <!-- database -->
             <Label DockPanel.Dock="Top" Content="Database:" />

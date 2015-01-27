@@ -94,5 +94,17 @@ namespace SQLAzureBacpac.Ui.Properties {
                 this["localfolder"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string storageaccount {
+            get {
+                return ((string)(this["storageaccount"]));
+            }
+            set {
+                this["storageaccount"] = value;
+            }
+        }
     }
 }

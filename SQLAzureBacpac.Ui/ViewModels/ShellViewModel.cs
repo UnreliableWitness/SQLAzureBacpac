@@ -2,19 +2,20 @@
 using System.IO;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using SQLAzureBacpac.Ui.Properties;
 using SQLAzureBacpac.Ui.Services;
 
 namespace SQLAzureBacpac.Ui.ViewModels
 {
-    public class ShellViewModel :  Screen
+    public class ShellViewModel : Screen
     {
         #region fields
 
         private readonly IWindowManager _windowManager;
-        private SqlAzureCredentials _sqlAzureCredentials;
         private string _database;
-        private int _progress;
         private string _localFolder;
+        private int _progress;
+        private SqlAzureCredentials _sqlAzureCredentials;
         private string _storageAccount;
 
         #endregion
@@ -75,6 +76,7 @@ namespace SQLAzureBacpac.Ui.ViewModels
                 NotifyOfPropertyChange(() => Database);
             }
         }
+
         #endregion
 
         public ShellViewModel(IWindowManager windowManager)
@@ -83,47 +85,66 @@ namespace SQLAzureBacpac.Ui.ViewModels
         }
 
         #region methods
+
         protected override void OnViewLoaded(object view)
         {
             SqlAzureCredentials = new SqlAzureCredentials();
-            SqlAzureCredentials.ServerName = Properties.Settings.Default.servername;
-            SqlAzureCredentials.StorageKey = Properties.Settings.Default.storagekey;
-            SqlAzureCredentials.Password = Properties.Settings.Default.password;
-            SqlAzureCredentials.Username = Properties.Settings.Default.username;
-            LocalFolder = Properties.Settings.Default.localfolder;
-            Database = Properties.Settings.Default.database;
+            SqlAzureCredentials.ServerName = Settings.Default.servername;
+            SqlAzureCredentials.StorageKey = Settings.Default.storagekey;
+            SqlAzureCredentials.Password = Settings.Default.password;
+            SqlAzureCredentials.Username = Settings.Default.username;
+            StorageAccount = Settings.Default.storageaccount;
+            LocalFolder = Settings.Default.localfolder;
+            Database = Settings.Default.database;
 
             base.OnViewLoaded(view);
         }
 
         public async Task ExportAsync()
         {
-            SaveSettings(SqlAzureCredentials, Database);
-            Progress = 1;
-
-            var progress = new Progress<int>(i => Progress = i);
-
-            if (SqlAzureCredentials.IsValid() && !string.IsNullOrEmpty(Database))
+            try
             {
-                var ieHelper = new ImportExportHelper();
+                SaveSettings(SqlAzureCredentials, Database);
+                Progress = 1;
 
-                ieHelper.EndPointUri = @"https://am1prod-dacsvc.azure.com/DACWebService.svc/";
-                ieHelper.ServerName = SqlAzureCredentials.ServerName;
-                ieHelper.StorageKey = SqlAzureCredentials.StorageKey;
-                ieHelper.DatabaseName = Database;
-                ieHelper.UserName = SqlAzureCredentials.Username;
-                ieHelper.Password = SqlAzureCredentials.Password;
+                var progress = new Progress<int>(i => Progress = i);
 
-                var bacpacName = string.Format("{0}-{1}", Database, DateTime.Now.ToString("dd-MM-yyyy-HH-mm"));
+                if (SqlAzureCredentials.IsValid() && !string.IsNullOrEmpty(Database) && !string.IsNullOrEmpty(StorageAccount))
+                {
+                    var ieHelper = new ImportExportHelper();
 
-                await ieHelper.DoExportAsync(String.Format(@"http://{0}.blob.core.windows.net/bacpac/{1}.bacpac", StorageAccount, bacpacName), progress);
+                    ieHelper.EndPointUri = @"https://am1prod-dacsvc.azure.com/DACWebService.svc/";
+                    ieHelper.ServerName = SqlAzureCredentials.ServerName;
+                    ieHelper.StorageKey = SqlAzureCredentials.StorageKey;
+                    ieHelper.DatabaseName = Database;
+                    ieHelper.UserName = SqlAzureCredentials.Username;
+                    ieHelper.Password = SqlAzureCredentials.Password;
 
-                SaveBacpac(bacpacName);
-                Progress = 90;
-                DeleteBacpacInCloud(bacpacName);
-                Progress = 100;
+                    string bacpacName = string.Format("{0}-{1}", Database, DateTime.Now.ToString("dd-MM-yyyy-HH-mm"));
 
-                
+                    await
+                        ieHelper.DoExportAsync(
+                            String.Format(@"http://{0}.blob.core.windows.net/bacpac/{1}.bacpac", StorageAccount,
+                                bacpacName), progress);
+
+                    SaveBacpac(bacpacName);
+                    Progress = 90;
+                    DeleteBacpacInCloud(bacpacName);
+                    Progress = 100;
+                }
+            }
+            catch (AggregateException aggregateException)
+            {
+                foreach (Exception innerException in aggregateException.InnerExceptions)
+                {
+                    Console.WriteLine(innerException);
+                }
+                throw;
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+                throw;
             }
         }
 
@@ -131,7 +152,8 @@ namespace SQLAzureBacpac.Ui.ViewModels
         {
             var utility =
                 new AzureBlobUtility(
-                    string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount, SqlAzureCredentials.StorageKey));
+                    string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount,
+                        SqlAzureCredentials.StorageKey));
 
             utility.DeleteFile(bacpacName + ".bacpac", "bacpac");
         }
@@ -140,10 +162,11 @@ namespace SQLAzureBacpac.Ui.ViewModels
         {
             var utility =
                 new AzureBlobUtility(
-                    string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount, SqlAzureCredentials.StorageKey));
-            var stream = utility.Download(bacpacName + ".bacpac", "bacpac");
+                    string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount,
+                        SqlAzureCredentials.StorageKey));
+            MemoryStream stream = utility.Download(bacpacName + ".bacpac", "bacpac");
             stream.Position = 0;
-            var file = Path.Combine(LocalFolder, bacpacName + ".bacpac");
+            string file = Path.Combine(LocalFolder, bacpacName + ".bacpac");
             var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write);
             stream.WriteTo(fileStream);
             fileStream.Close();
@@ -152,14 +175,16 @@ namespace SQLAzureBacpac.Ui.ViewModels
 
         private void SaveSettings(SqlAzureCredentials sqlAzureCredentials, string database)
         {
-            Properties.Settings.Default.database = database;
-            Properties.Settings.Default.servername = sqlAzureCredentials.ServerName;
-            Properties.Settings.Default.storagekey = sqlAzureCredentials.StorageKey;
-            Properties.Settings.Default.username = sqlAzureCredentials.Username;
-            Properties.Settings.Default.password = sqlAzureCredentials.Password;
-            Properties.Settings.Default.localfolder = LocalFolder;
-            Properties.Settings.Default.Save();
+            Settings.Default.database = database;
+            Settings.Default.servername = sqlAzureCredentials.ServerName;
+            Settings.Default.storagekey = sqlAzureCredentials.StorageKey;
+            Settings.Default.username = sqlAzureCredentials.Username;
+            Settings.Default.password = sqlAzureCredentials.Password;
+            Settings.Default.localfolder = LocalFolder;
+            Settings.Default.storageaccount = StorageAccount;
+            Settings.Default.Save();
         }
+
         #endregion
     }
 }
