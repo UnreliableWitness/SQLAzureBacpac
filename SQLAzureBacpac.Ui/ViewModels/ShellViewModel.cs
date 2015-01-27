@@ -17,10 +17,22 @@ namespace SQLAzureBacpac.Ui.ViewModels
         private int _progress;
         private SqlAzureCredentials _sqlAzureCredentials;
         private string _storageAccount;
+        private ExceptionViewModel _exceptionViewModel;
 
         #endregion
 
         #region bindings
+
+        public ExceptionViewModel ExceptionViewModel
+        {
+            get { return _exceptionViewModel; }
+            set
+            {
+                if (Equals(value, _exceptionViewModel)) return;
+                _exceptionViewModel = value;
+                NotifyOfPropertyChange(() => ExceptionViewModel);
+            }
+        }
 
         public string StorageAccount
         {
@@ -79,8 +91,9 @@ namespace SQLAzureBacpac.Ui.ViewModels
 
         #endregion
 
-        public ShellViewModel(IWindowManager windowManager)
+        public ShellViewModel(IWindowManager windowManager, ExceptionViewModel exceptionViewModel)
         {
+            ExceptionViewModel = exceptionViewModel;
             _windowManager = windowManager;
         }
 
@@ -106,19 +119,19 @@ namespace SQLAzureBacpac.Ui.ViewModels
             {
                 SaveSettings(SqlAzureCredentials, Database);
                 Progress = 1;
-
                 var progress = new Progress<int>(i => Progress = i);
 
                 if (SqlAzureCredentials.IsValid() && !string.IsNullOrEmpty(Database) && !string.IsNullOrEmpty(StorageAccount))
                 {
-                    var ieHelper = new ImportExportHelper();
-
-                    ieHelper.EndPointUri = @"https://am1prod-dacsvc.azure.com/DACWebService.svc/";
-                    ieHelper.ServerName = SqlAzureCredentials.ServerName;
-                    ieHelper.StorageKey = SqlAzureCredentials.StorageKey;
-                    ieHelper.DatabaseName = Database;
-                    ieHelper.UserName = SqlAzureCredentials.Username;
-                    ieHelper.Password = SqlAzureCredentials.Password;
+                    var ieHelper = new ImportExportHelper
+                    {
+                        EndPointUri = @"https://am1prod-dacsvc.azure.com/DACWebService.svc/",
+                        ServerName = SqlAzureCredentials.ServerName,
+                        StorageKey = SqlAzureCredentials.StorageKey,
+                        DatabaseName = Database,
+                        UserName = SqlAzureCredentials.Username,
+                        Password = SqlAzureCredentials.Password
+                    };
 
                     string bacpacName = string.Format("{0}{1}", Database, DateTime.Now.Ticks);
 
@@ -137,14 +150,14 @@ namespace SQLAzureBacpac.Ui.ViewModels
             {
                 foreach (Exception innerException in aggregateException.InnerExceptions)
                 {
-                    Console.WriteLine(innerException);
+                    ExceptionViewModel.Message = innerException.ToString();
+                    _windowManager.ShowDialog(ExceptionViewModel);
                 }
-                throw;
             }
             catch (Exception exception)
             {
-                Console.WriteLine(exception);
-                throw;
+                ExceptionViewModel.Message = exception.ToString();
+                _windowManager.ShowDialog(ExceptionViewModel);
             }
         }
 

@@ -1,0 +1,27 @@
+﻿<UserControl x:Class="SQLAzureBacpac.Ui.Views.ExceptionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:viewModels="clr-namespace:SQLAzureBacpac.Ui.ViewModels"
+             mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModels:ExceptionViewModel}"
+             Width="400" Height="150" Background="Silver" Padding="5">
+    <Border Background="White" Padding="5">
+    <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+            </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Message}" TextWrapping="WrapWithOverflow"></TextBlock>
+        </Grid>
+        <StackPanel Grid.Row="1" HorizontalAlignment="Right">
+            <Button Content="Close" x:Name="Cancel"></Button>
+        </StackPanel>
+    </Grid>
+    </Border>
+</UserControl>

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Windows;
 using Caliburn.Micro;
 using Ninject;
-using SQLAzureBacpac.Ui.Services;
 using SQLAzureBacpac.Ui.ViewModels;
 
 namespace SQLAzureBacpac.Ui
@@ -18,7 +17,7 @@ namespace SQLAzureBacpac.Ui
 
             _kernel.Bind<IWindowManager>().To<WindowManager>().InSingletonScope();
             _kernel.Bind<IEventAggregator>().To<EventAggregator>().InSingletonScope();
-            _kernel.Bind<ShellViewModel>().ToSelf();
+
         }
 
         public Bootstrapper()

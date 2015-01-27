@@ -11,16 +11,8 @@ using SQLAzureBacpac.Ui.DacService;
 
 namespace SQLAzureBacpac.Ui
 {
-    class ImportExportHelper
+    internal class ImportExportHelper
     {
-        public string EndPointUri { get; set; }
-        public string StorageKey { get; set; }
-        public string BlobUri { get; set; }
-        public string ServerName { get; set; }
-        public string DatabaseName { get; set; }
-        public string UserName { get; set; }
-        public string Password { get; set; }
-
         public ImportExportHelper()
         {
             EndPointUri = "";
@@ -31,12 +23,18 @@ namespace SQLAzureBacpac.Ui
             Password = "";
         }
 
+        public string EndPointUri { get; set; }
+        public string StorageKey { get; set; }
+        public string BlobUri { get; set; }
+        public string ServerName { get; set; }
+        public string DatabaseName { get; set; }
+        public string UserName { get; set; }
+        public string Password { get; set; }
+
         public async Task<string> DoExportAsync(string blobUri, IProgress<int> progress)
         {
-
-
             //Setup Web Request for Export Operation 
-            var webRequest = WebRequest.Create(EndPointUri + @"/Export");
+            WebRequest webRequest = WebRequest.Create(EndPointUri + @"/Export");
             webRequest.Method = WebRequestMethods.Http.Post;
             webRequest.ContentType = @"application/xml";
 
@@ -58,14 +56,13 @@ namespace SQLAzureBacpac.Ui
             };
 
             //Perform Web Request 
-            var webRequestStream = await webRequest.GetRequestStreamAsync();
+            Stream webRequestStream = await webRequest.GetRequestStreamAsync();
             progress.Report(20);
             var dataContractSerializer = new DataContractSerializer(exportInputs.GetType());
             dataContractSerializer.WriteObject(webRequestStream, exportInputs);
             webRequestStream.Close();
 
             return await ExportAwaiterAsync(webRequest, progress);
-
         }
 
         private async Task<string> ExportAwaiterAsync(WebRequest webRequest, IProgress<int> progress)
@@ -74,54 +71,62 @@ namespace SQLAzureBacpac.Ui
             string exportedBlobPath = null;
 
             //Get Response and Extract Request Identifier 
-            try
+
+            //Initialize the WebResponse to the response from the WebRequest 
+            webRequest.Timeout = (int)TimeSpan.FromSeconds(5).TotalMilliseconds;
+            var webResponse = webRequest.GetResponse();
+            progress.Report(30);
+            var xmlStreamReader = XmlReader.Create(webResponse.GetResponseStream());
+            xmlStreamReader.ReadToFollowing("guid");
+            string requestGuid = xmlStreamReader.ReadElementContentAsString();
+
+            //Get Export Operation Status
+
+            return await Task.Run(async () =>
             {
-                //Initialize the WebResponse to the response from the WebRequest 
-                var webResponse = await webRequest.GetResponseAsync();
-                progress.Report(30);
-                var xmlStreamReader = XmlReader.Create(webResponse.GetResponseStream());
-                xmlStreamReader.ReadToFollowing("guid");
-                string requestGuid = xmlStreamReader.ReadElementContentAsString();
-
-                //Get Export Operation Status
-
-                return await Task.Run( async () =>
+                while (!exportComplete)
                 {
-                    while (!exportComplete)
+                    List<StatusInfo> statusInfoList = await CheckRequestStatusAsync(requestGuid);
+
+                    if (statusInfoList.FirstOrDefault().Status == "Failed")
                     {
-                        var statusInfoList = await CheckRequestStatusAsync(requestGuid);
-
-                        if (statusInfoList.FirstOrDefault().Status == "Failed")
-                        {
-                            Console.WriteLine("Database export failed: {0}", statusInfoList.FirstOrDefault().ErrorMessage);
-                            exportComplete = true;
-                        }
-
-                        if (statusInfoList.FirstOrDefault().Status == "Completed")
-                        {
-                            exportedBlobPath = statusInfoList.FirstOrDefault().BlobUri;
-                            Console.WriteLine("Export Complete - Database exported to: {0}\n\r", exportedBlobPath);
-                            exportComplete = true;
-                        }
+                        Console.WriteLine("Database export failed: {0}", statusInfoList.FirstOrDefault().ErrorMessage);
+                        exportComplete = true;
                     }
-                    progress.Report(80);
-                    return exportedBlobPath;
-                });
 
-            }
-            catch (WebException responseException)
-            {
-                Console.WriteLine("Request Falied:{0}", responseException.Message);
-                if (responseException.Response != null)
-                {
-                    Console.WriteLine("Status Code: {0}", ((HttpWebResponse)responseException.Response).StatusCode);
-                    Console.WriteLine("Status Description: {0}\n\r", ((HttpWebResponse)responseException.Response).StatusDescription);
+                    if (statusInfoList.FirstOrDefault().Status == "Completed")
+                    {
+                        exportedBlobPath = statusInfoList.FirstOrDefault().BlobUri;
+                        Console.WriteLine("Export Complete - Database exported to: {0}\n\r", exportedBlobPath);
+                        exportComplete = true;
+                    }
                 }
-                return null;
-            }
+                progress.Report(80);
+                return exportedBlobPath;
+            });
+        }
+
+        public async Task<List<StatusInfo>> CheckRequestStatusAsync(string requestGuid)
+        {
+            WebRequest webRequest =
+                WebRequest.Create(EndPointUri +
+                                  string.Format("/Status?servername={0}&username={1}&password={2}&reqId={3}",
+                                      HttpUtility.UrlEncode(ServerName),
+                                      HttpUtility.UrlEncode(UserName),
+                                      HttpUtility.UrlEncode(Password),
+                                      HttpUtility.UrlEncode(requestGuid)));
+
+            webRequest.Method = WebRequestMethods.Http.Get;
+            webRequest.ContentType = @"application/xml";
+            WebResponse webResponse = await webRequest.GetResponseAsync();
+            XmlReader xmlStreamReader = XmlReader.Create(webResponse.GetResponseStream());
+            var dataContractSerializer = new DataContractSerializer(typeof (List<StatusInfo>));
+
+            return (List<StatusInfo>) dataContractSerializer.ReadObject(xmlStreamReader, true);
         }
 
         #region tofix
+
         //public bool DoImport(string blobUri)
         //{
         //    Console.Write("Starting Import Operation - {0}\n\r", DateTime.Now);
@@ -208,23 +213,7 @@ namespace SQLAzureBacpac.Ui
         //        return importComplete;
         //    }
         //}
+
         #endregion
-
-        public async Task<List<StatusInfo>> CheckRequestStatusAsync(string requestGuid)
-        {
-            var webRequest = WebRequest.Create(EndPointUri + string.Format("/Status?servername={0}&username={1}&password={2}&reqId={3}",
-                    HttpUtility.UrlEncode(ServerName),
-                    HttpUtility.UrlEncode(UserName),
-                    HttpUtility.UrlEncode(Password),
-                    HttpUtility.UrlEncode(requestGuid)));
-
-            webRequest.Method = WebRequestMethods.Http.Get;
-            webRequest.ContentType = @"application/xml";
-            var webResponse = await webRequest.GetResponseAsync();
-            var xmlStreamReader = XmlReader.Create(webResponse.GetResponseStream());
-            var dataContractSerializer = new DataContractSerializer(typeof(List<StatusInfo>));
-
-            return (List<StatusInfo>)dataContractSerializer.ReadObject(xmlStreamReader, true);
-        }
-    } 
+    }
 }
