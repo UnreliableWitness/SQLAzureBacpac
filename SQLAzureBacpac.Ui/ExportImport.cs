@@ -100,7 +100,7 @@ namespace SQLAzureBacpac.Ui
                         if (statusInfoList.FirstOrDefault().Status == "Completed")
                         {
                             exportedBlobPath = statusInfoList.FirstOrDefault().BlobUri;
-                            Console.WriteLine(String.Format("Export Complete - Database exported to: {0}\n\r", exportedBlobPath));
+                            Console.WriteLine("Export Complete - Database exported to: {0}\n\r", exportedBlobPath);
                             exportComplete = true;
                         }
                     }

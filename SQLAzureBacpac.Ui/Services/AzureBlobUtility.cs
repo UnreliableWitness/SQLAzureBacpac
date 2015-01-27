@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.RetryPolicies;
 
 namespace SQLAzureBacpac.Ui.Services
 {
@@ -16,25 +18,25 @@ namespace SQLAzureBacpac.Ui.Services
             _blobClient = storageAccount.CreateCloudBlobClient();
         }
 
-        public void DeleteFile(string fileName, string containerName)
+        public async Task DeleteFileAsync(string fileName, string containerName)
         {
-            var container = _blobClient.GetContainerReference(containerName);
+            var container = _blobClient.GetContainerReference(containerName.ToLower());
 
             var blob = container.GetBlockBlobReference(fileName);
-            blob.DeleteIfExists();
+            await blob.DeleteIfExistsAsync();
         }
 
-        public MemoryStream Download(string fileName, string containerName)
+        public async Task<MemoryStream> DownloadAsync(string fileName, string containerName)
         {
             
             // Retrieve reference to a previously created container.
-            var container = _blobClient.GetContainerReference(containerName);
+            var container = _blobClient.GetContainerReference(containerName.ToLower());
 
             var blob = container.GetBlockBlobReference(fileName);
             var s = new MemoryStream();
             try
             {
-                blob.DownloadToStream(s);
+                await blob.DownloadToStreamAsync(s);
                 return s;
             }
             catch (Exception)

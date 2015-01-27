@@ -120,16 +120,16 @@ namespace SQLAzureBacpac.Ui.ViewModels
                     ieHelper.UserName = SqlAzureCredentials.Username;
                     ieHelper.Password = SqlAzureCredentials.Password;
 
-                    string bacpacName = string.Format("{0}-{1}", Database, DateTime.Now.ToString("dd-MM-yyyy-HH-mm"));
+                    string bacpacName = string.Format("{0}{1}", Database, DateTime.Now.Ticks);
 
                     await
                         ieHelper.DoExportAsync(
                             String.Format(@"http://{0}.blob.core.windows.net/bacpac/{1}.bacpac", StorageAccount,
                                 bacpacName), progress);
 
-                    SaveBacpac(bacpacName);
+                    await SaveBacpac(bacpacName);
                     Progress = 90;
-                    DeleteBacpacInCloud(bacpacName);
+                    await DeleteBacpacInCloudAsync(bacpacName);
                     Progress = 100;
                 }
             }
@@ -148,23 +148,23 @@ namespace SQLAzureBacpac.Ui.ViewModels
             }
         }
 
-        private void DeleteBacpacInCloud(string bacpacName)
+        private async Task DeleteBacpacInCloudAsync(string bacpacName)
         {
             var utility =
                 new AzureBlobUtility(
                     string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount,
                         SqlAzureCredentials.StorageKey));
 
-            utility.DeleteFile(bacpacName + ".bacpac", "bacpac");
+            await utility.DeleteFileAsync(bacpacName + ".bacpac", "bacpac");
         }
 
-        private void SaveBacpac(string bacpacName)
+        private async Task SaveBacpac(string bacpacName)
         {
             var utility =
                 new AzureBlobUtility(
                     string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount,
                         SqlAzureCredentials.StorageKey));
-            MemoryStream stream = utility.Download(bacpacName + ".bacpac", "bacpac");
+            MemoryStream stream = await utility.DownloadAsync(bacpacName + ".bacpac", "bacpac");
             stream.Position = 0;
             string file = Path.Combine(LocalFolder, bacpacName + ".bacpac");
             var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write);
