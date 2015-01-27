@@ -1,6 +1,6 @@
 # SQLAzureBacpac
 
-This is a little application that you can use to make .bacpac files of databases hosted in Windows Azure.
+This is a little application that you can use to make .bacpac files (and store locally) of databases hosted in Windows Azure.
 
 ##needed input
 - sql server name
