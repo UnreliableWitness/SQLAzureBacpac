@@ -36,7 +36,7 @@ namespace SQLAzureBacpac.Ui.ViewModels
 
         public string StorageAccount
         {
-            get { return _storageAccount; }
+            get { return _storageAccount.ToLower(); }
             set
             {
                 if (value == _storageAccount) return;
@@ -101,6 +101,7 @@ namespace SQLAzureBacpac.Ui.ViewModels
 
         protected override void OnViewLoaded(object view)
         {
+            DisplayName = "SQLAzureBacpac";
             SqlAzureCredentials = new SqlAzureCredentials();
             SqlAzureCredentials.ServerName = Settings.Default.servername;
             SqlAzureCredentials.StorageKey = Settings.Default.storagekey;
@@ -142,7 +143,7 @@ namespace SQLAzureBacpac.Ui.ViewModels
 
                     await SaveBacpac(bacpacName);
                     Progress = 90;
-                    await DeleteBacpacInCloudAsync(bacpacName);
+                    DeleteBacpacInCloud(bacpacName);
                     Progress = 100;
                 }
             }
@@ -161,14 +162,14 @@ namespace SQLAzureBacpac.Ui.ViewModels
             }
         }
 
-        private async Task DeleteBacpacInCloudAsync(string bacpacName)
+        private void DeleteBacpacInCloud(string bacpacName)
         {
             var utility =
                 new AzureBlobUtility(
                     string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccount,
                         SqlAzureCredentials.StorageKey));
 
-            await utility.DeleteFileAsync(bacpacName + ".bacpac", "bacpac");
+            utility.DeleteFile(bacpacName + ".bacpac", "bacpac");
         }
 
         private async Task SaveBacpac(string bacpacName)

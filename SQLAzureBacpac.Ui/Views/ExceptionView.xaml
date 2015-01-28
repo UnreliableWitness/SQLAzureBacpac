@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:viewModels="clr-namespace:SQLAzureBacpac.Ui.ViewModels"
              mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModels:ExceptionViewModel}"
-             Width="400" Height="150" Background="Silver" Padding="5">
+             Width="800" Background="Silver" Padding="5">
     <Border Background="White" Padding="5">
     <Grid>
             <Grid.RowDefinitions>
@@ -18,7 +18,7 @@
                     <ColumnDefinition Width="*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="{Binding Message}" TextWrapping="WrapWithOverflow"></TextBlock>
+                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap"></TextBlock>
 
         </Grid>
         <StackPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,5,0,0">

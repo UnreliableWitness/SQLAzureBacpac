@@ -86,7 +86,7 @@ namespace SQLAzureBacpac.Ui
             {
                 while (!exportComplete)
                 {
-                    List<StatusInfo> statusInfoList = await CheckRequestStatusAsync(requestGuid);
+                    List<StatusInfo> statusInfoList = CheckRequestStatus(requestGuid);
 
                     if (statusInfoList.FirstOrDefault().Status == "Failed")
                     {
@@ -106,7 +106,7 @@ namespace SQLAzureBacpac.Ui
             });
         }
 
-        public async Task<List<StatusInfo>> CheckRequestStatusAsync(string requestGuid)
+        public List<StatusInfo> CheckRequestStatus(string requestGuid)
         {
             WebRequest webRequest =
                 WebRequest.Create(EndPointUri +
@@ -118,7 +118,7 @@ namespace SQLAzureBacpac.Ui
 
             webRequest.Method = WebRequestMethods.Http.Get;
             webRequest.ContentType = @"application/xml";
-            WebResponse webResponse = await webRequest.GetResponseAsync();
+            WebResponse webResponse = webRequest.GetResponse();
             XmlReader xmlStreamReader = XmlReader.Create(webResponse.GetResponseStream());
             var dataContractSerializer = new DataContractSerializer(typeof (List<StatusInfo>));
 
